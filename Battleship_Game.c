@@ -4,16 +4,9 @@
 #include <time.h>
 #include <stdbool.h>
 #include <signal.h>
-#include <string.h>
 
 #define GRID_SIZE 4
 #define SHIPS 4
-
-volatile sig_atomic_t game_over = 0;
-
-void handle_signal(int signal) {
-    game_over = 1;
-}
 
 // Function to generate a grid with randomly placed ships
 void generate_grid(char grid[GRID_SIZE][GRID_SIZE]) {
@@ -75,28 +68,14 @@ bool process_guess(char grid[GRID_SIZE][GRID_SIZE], int x, int y) {
 int main() {
     srand(time(NULL));
 
-    signal(SIGTERM, handle_signal);
-
     int parent_to_child[2];  // Pipe: parent -> child
     int child_to_parent[2];  // Pipe: child -> parent
 
-    // Create pipes and check for errors
-    if (pipe(parent_to_child) == -1) {
-        perror("Pipe failed for parent_to_child");
-        exit(1);
-    }
-
-    if (pipe(child_to_parent) == -1) {
-        perror("Pipe failed for child_to_parent");
-        exit(1);
-    }
+    // Create pipes
+    pipe(parent_to_child);
+    pipe(child_to_parent);
 
     pid_t pid = fork();
-
-    if (pid == -1) {
-        perror("Fork failed");
-        exit(1);
-    }
 
     if (pid == 0) {  // Child process
         close(parent_to_child[1]);  // Close write-end of parent-to-child pipe
@@ -107,24 +86,15 @@ int main() {
         printf("Child's initial grid:\n");
         print_grid(child_grid);
 
-        while (!game_over) {
+        while (1) {
             int x, y;
             // Read parent's attack coordinates
-            if (read(parent_to_child[0], &x, sizeof(int)) == -1) {
-                perror("Child read failed");
-                exit(1);
-            }
-            if (read(parent_to_child[0], &y, sizeof(int)) == -1) {
-                perror("Child read failed");
-                exit(1);
-            }
+            read(parent_to_child[0], &x, sizeof(int));
+            read(parent_to_child[0], &y, sizeof(int));
 
             // Process the attack and send result to parent
             bool hit = process_guess(child_grid, x, y);
-            if (write(child_to_parent[1], &hit, sizeof(bool)) == -1) {
-                perror("Child write failed");
-                exit(1);
-            }
+            write(child_to_parent[1], &hit, sizeof(bool));
 
             // Check if all ships are sunk
             if (all_ships_sunk(child_grid)) {
@@ -135,19 +105,15 @@ int main() {
 
             // Child's turn to attack
             choose_random_point(&x, &y);
-            if (write(child_to_parent[1], &x, sizeof(int)) == -1) {
-                perror("Child write failed");
-                exit(1);
-            }
-            if (write(child_to_parent[1], &y, sizeof(int)) == -1) {
-                perror("Child write failed");
-                exit(1);
-            }
+            write(child_to_parent[1], &x, sizeof(int));
+            write(child_to_parent[1], &y, sizeof(int));
 
             // Get parent's result
-            if (read(parent_to_child[0], &hit, sizeof(bool)) == -1) {
-                perror("Child read failed");
-                exit(1);
+            read(parent_to_child[0], &hit, sizeof(bool));
+            if (all_ships_sunk(child_grid)) {
+                printf("Child: I win! I sank all of the parent's ships.\n");
+                kill(getppid(), SIGTERM);
+                exit(0);
             }
         }
 
@@ -160,26 +126,17 @@ int main() {
         printf("Parent's initial grid:\n");
         print_grid(parent_grid);
 
-        while (!game_over) {
+        while (1) {
             int x, y;
 
             // Parent's turn to attack
             choose_random_point(&x, &y);
-            if (write(parent_to_child[1], &x, sizeof(int)) == -1) {
-                perror("Parent write failed");
-                exit(1);
-            }
-            if (write(parent_to_child[1], &y, sizeof(int)) == -1) {
-                perror("Parent write failed");
-                exit(1);
-            }
+            write(parent_to_child[1], &x, sizeof(int));
+            write(parent_to_child[1], &y, sizeof(int));
 
             // Get child's result
             bool hit;
-            if (read(child_to_parent[0], &hit, sizeof(bool)) == -1) {
-                perror("Parent read failed");
-                exit(1);
-            }
+            read(child_to_parent[0], &hit, sizeof(bool));
             if (hit) {
                 process_guess(parent_grid, x, y);
             }
@@ -191,21 +148,12 @@ int main() {
             }
 
             // Receive attack coordinates from child
-            if (read(child_to_parent[0], &x, sizeof(int)) == -1) {
-                perror("Parent read failed");
-                exit(1);
-            }
-            if (read(child_to_parent[0], &y, sizeof(int)) == -1) {
-                perror("Parent read failed");
-                exit(1);
-            }
+            read(child_to_parent[0], &x, sizeof(int));
+            read(child_to_parent[0], &y, sizeof(int));
 
             // Process the child's attack and send result
             hit = process_guess(parent_grid, x, y);
-            if (write(parent_to_child[1], &hit, sizeof(bool)) == -1) {
-                perror("Parent write failed");
-                exit(1);
-            }
+            write(parent_to_child[1], &hit, sizeof(bool));
 
             if (all_ships_sunk(parent_grid)) {
                 printf("Parent: I win! I sank all of the child's ships.\n");
