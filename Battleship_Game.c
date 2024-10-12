@@ -62,11 +62,14 @@ bool process_guess(char grid[GRID_SIZE][GRID_SIZE], int x, int y) {
         grid[x][y] = 'X';  // Mark as hit
         return true;
     }
+    else{
+        grid[x][y] = 'O';  
+    }
     return false;
 }
 
 int main() {
-    srand(time(NULL));
+    srand(time(NULL));//uses current time to create a seed for random generator
 
     int parent_to_child[2];  // Pipe: parent -> child
     int child_to_parent[2];  // Pipe: child -> parent
@@ -77,13 +80,21 @@ int main() {
 
     pid_t pid = fork();
 
+    if(pid==-1){//handles fail case if it occurs, returns with fail case('1')
+        perror("Failed to create child process ");
+        return 1;
+    }
+
+    
     if (pid == 0) {  // Child process
-        close(parent_to_child[1]);  // Close write-end of parent-to-child pipe
-        close(child_to_parent[0]);  // Close read-end of child-to-parent pipe
+        close(parent_to_child[1]);  // Close write-end of parent-to-child pipe **"the child only reads from this pipe"
+        close(child_to_parent[0]);  // Close read-end of child-to-parent pipe **"the child only writes to this pipe"
 
         char child_grid[GRID_SIZE][GRID_SIZE];
+        srand(time(NULL) ^ getpid()*13);//unique seed to avoid same grid
         generate_grid(child_grid);
-        printf("Child's initial grid:\n");
+        sleep(0.5);//wait for the parent's grid to be printed
+        printf("(Child)Second player's initial grid:\n");
         print_grid(child_grid);
 
         while (1) {
@@ -118,24 +129,24 @@ int main() {
         }
 
     } else {  // Parent process
-        close(parent_to_child[0]);  // Close read-end of parent-to-child pipe
-        close(child_to_parent[1]);  // Close write-end of child-to-parent pipe
+        close(parent_to_child[0]);  // Close read-end of parent-to-child pipe **"the parent only reads from this pipe"
+        close(child_to_parent[1]);  // Close write-end of child-to-parent pipe **"the parent only writes to this pipe"
 
         char parent_grid[GRID_SIZE][GRID_SIZE];
         generate_grid(parent_grid);
-        printf("Parent's initial grid:\n");
+        printf("(Parent)First player's initial grid:\n");
         print_grid(parent_grid);
 
         while (1) {
             int x, y;
+            bool hit;// Get child's result
 
             // Parent's turn to attack
             choose_random_point(&x, &y);
             write(parent_to_child[1], &x, sizeof(int));
             write(parent_to_child[1], &y, sizeof(int));
 
-            // Get child's result
-            bool hit;
+            
             read(child_to_parent[0], &hit, sizeof(bool));
             if (hit) {
                 process_guess(parent_grid, x, y);
