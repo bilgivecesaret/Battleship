@@ -24,7 +24,7 @@ typedef struct {
     //int consumedAmmoChild;
 } BattleFieldInfo;
 
-void intializeMap(char grid[GRID_SIZE][GRID_SIZE]) {//initializes the map by placing 'O' on each tile
+void initializeMap(char grid[GRID_SIZE][GRID_SIZE]) {//initializes the map by placing 'O' on each tile
     for (int i = 0; i < GRID_SIZE; i++) {
         for (int j = 0; j < GRID_SIZE; j++) {
             grid[i][j] = TILE;
@@ -104,52 +104,53 @@ int main() {
     BattleFieldInfo *state = mmap(0, sizeof(BattleFieldInfo), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
     //Initializes maps
-    intializeMap(state->parentGrid);
-    intializeMap(state->childGrid);
+    initializeMap(state->parentGrid);
+    initializeMap(state->childGrid);
 
     //place ships for both players
     placeRandomShips(state->parentGrid);
     srand(time(NULL)*13);//to assure unique seed
     placeRandomShips(state->childGrid);
 
-    state->turn = rand()%2;//random player starts
+    state->turn = rand()%2;//selects randomly a player to start: turn=0 for child/ turn=1 for parent
     state->remainingShipsPar = SHIPS;
     state->remainingShipsChild = SHIPS;
 
     // Display initial grids
-    printf("Initial grids:\n");
+    printf("Initial grids: \" S:Ship, X:Hit, O:Miss, .=Empty tile \" X\n");
     displayMap(state->parentGrid, "Parent");
     displayMap(state->childGrid, "Child");
 
-    pid_t pid = fork();
+    pid_t pid = fork();//creates child process
     
     if (pid == -1) {//failed to fork
         exit(1);
     } else if (pid == 0) { // Child process
-        while (state->remainingShipsPar > 0 && state->remainingShipsChild > 0) {
+        while (state->remainingShipsPar > 0 && state->remainingShipsChild > 0) {//continues if both side have at least one ship
             if (!state->turn) {
                 randomMovement(state, 1);
                 state->turn = 1;
             }
+            usleep(1);//sleep for 1 ms to prevent turn overlapping
         }
         if (state->remainingShipsPar == 0) {
-            printf("Child wins! Final Grids:\n");
+            printf("--------------------------\nChild wins! Final Grids:\n");
             displayMap(state->parentGrid, "Parent");
             displayMap(state->childGrid, "Child");
         } 
         exit(0); //exit child process
     } else { // Parent process
-        while (state->remainingShipsPar > 0 && state->remainingShipsChild > 0) {
+        while (state->remainingShipsPar > 0 && state->remainingShipsChild > 0) {//continues if both side have at least one ship
             if (state->turn) {
                 randomMovement(state, 0);
                 state->turn = 0;
-
             }
+            usleep(1);//sleep for 1 ms to prevent turn overlapping
         }
         // Wait for child process to end
         wait(NULL);
         if (state->remainingShipsChild == 0) {
-            printf("Parent wins! Final Grids:\n");
+            printf("--------------------------\nParent wins! Final Grids:\n");
             displayMap(state->parentGrid, "Parent");
             displayMap(state->childGrid, "Child");
         }
