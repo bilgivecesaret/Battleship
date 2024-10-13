@@ -8,10 +8,10 @@
 
 #define GRID_SIZE 4
 #define SHIPS 4
-#define TILE 'O'
+#define TILE '.'
 #define HIT 'X'
 #define SHIP 'S'
-#define MISS 'M'
+#define MISS 'O'
 
 // Structure for the battlefield
 typedef struct {
@@ -67,11 +67,11 @@ void randomMovement(BattleFieldInfo* state,int player) {
             hitMis="misses";
         }
 
-        //******************** */
+        /*--to see all turns
         printf("\nParent %s at (%d, %d)!\n",hitMis, x, y);
         printf("Grids after Parent's move:");
         displayMap(state->childGrid, "Child");
-        //******************** */
+        */
 
     } else { // Child's turn
         if (state->parentGrid[x][y] == SHIP) {
@@ -84,13 +84,13 @@ void randomMovement(BattleFieldInfo* state,int player) {
             hitMis="misses";
         }
 
-        //******************** */
+        /*--to see all turns
         printf("\nChild %s at (%d, %d)!\n",hitMis, x, y);
         printf("Grids after Child's move:");
         displayMap(state->parentGrid, "Parent");
-        //******************** */
+         */
     }
-    printf("-------------------");
+    //printf("-------------------");
 }
 
 int main() {
@@ -131,10 +131,11 @@ int main() {
                 randomMovement(state, 1);
                 state->turn = 1;
             }
-            sleep(1);
         }
         if (state->remainingShipsPar == 0) {
-            printf("Child wins!\n");
+            printf("Child wins! Final Grids:\n");
+            displayMap(state->parentGrid, "Parent");
+            displayMap(state->childGrid, "Child");
         } 
         exit(0); //exit child process
     } else { // Parent process
@@ -144,12 +145,13 @@ int main() {
                 state->turn = 0;
 
             }
-            sleep(1);
         }
         // Wait for child process to end
         wait(NULL);
         if (state->remainingShipsChild == 0) {
-            printf("Parent wins!\n");
+            printf("Parent wins! Final Grids:\n");
+            displayMap(state->parentGrid, "Parent");
+            displayMap(state->childGrid, "Child");
         }
     }
 
