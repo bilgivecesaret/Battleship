@@ -19,6 +19,6 @@ The following steps walk through getting the application running.
 
 Open the terminal in the location of the "<code><b>Battleship_Game.c</b></code>" file in the Linux operating system.
 
-Type the command "<code><b>gcc Battleship_Game.c -o battleship</b></code>" into the terminal.
+Type the command "<code><b>gcc Battleship_Game.c -o battleship -lrt</b></code>" into the terminal.
 
 Then type the command "<code><b>./battleship</b></code>" to run the application.
