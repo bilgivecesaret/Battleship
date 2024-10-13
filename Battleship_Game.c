@@ -27,7 +27,7 @@ void generate_grid(char grid[GRID_SIZE][GRID_SIZE]) {
     }
 }
 
-// Function to print the grid (for debugging purposes)
+// Function to print the grid 
 void print_grid(char grid[GRID_SIZE][GRID_SIZE]) {
     for (int i = 0; i < GRID_SIZE; i++) {
         for (int j = 0; j < GRID_SIZE; j++) {
@@ -86,16 +86,14 @@ int main() {
     if(pid==-1){//handles fail case if it occurs, returns with fail case('1')
         perror("Failed to create child process ");
         return 1;
-    }
-
-    
-    if (pid == 0) {  // Child process
-        close(parent_to_child[1]);  // Close write-end of parent-to-child pipe **"the child only reads from this pipe"
-        close(child_to_parent[0]);  // Close read-end of child-to-parent pipe **"the child only writes to this pipe"
+    }    
+    else if (pid == 0) {  // Child process
+        close(parent_to_child[1]);  // Close write-end of parent-to-child pipe 
+        close(child_to_parent[0]);  // Close read-end of child-to-parent pipe 
        
         srand(time(NULL)*13);//unique seed to avoid same grid
         generate_grid(child_grid);
-        printf("(Child)Second player's initial grid:\n");
+        printf("Child's initial grid:\n");
         print_grid(child_grid);
 
         while (1) {
@@ -111,10 +109,10 @@ int main() {
 
             // Check if all ships are sunk
             if (all_ships_sunk(child_grid)) {
-                printf("Child: Parent wins! All my ships have been sunk.\n");
-                printf("(Parent)First player's final grid:\n");
+                printf("Child: Parent wins! All my ships have been sunk.\n\n");
+                printf("Parent's final grid:\n");
         	print_grid(parent_grid);
-         	printf("(Child)Second player's final grid:\n");
+         	printf("Child's final grid:\n");
         	print_grid(child_grid);
                 kill(getppid(), SIGTERM);  // Terminate the parent
                 exit(0);
@@ -128,10 +126,10 @@ int main() {
             // Get parent's result
             read(parent_to_child[0], parent_grid, sizeof(parent_grid));
             if (all_ships_sunk(parent_grid)) {
-                printf("Child: I win! I sank all of the parent's ships.\n");
-                printf("(Parent)First player's final grid:\n");
+                printf("Child: I win! I sank all of the parent's ships.\n\n");
+                printf("Parent's final grid:\n");
         	print_grid(parent_grid);
-         	printf("(Child)Second player's final grid:\n");
+         	printf("Child's final grid:\n");
         	print_grid(child_grid);
                 kill(getppid(), SIGTERM);
                 exit(0);
@@ -143,7 +141,7 @@ int main() {
         close(child_to_parent[1]);  // Close write-end of child-to-parent pipe **"the parent only writes to this pipe"
 
         generate_grid(parent_grid);
-        printf("(Parent)First player's initial grid:\n");
+        printf("Parent's initial grid:\n");
         print_grid(parent_grid);
 
         while (1) {
@@ -159,10 +157,10 @@ int main() {
             read(child_to_parent[0], child_grid, sizeof(child_grid));      
             
             if (all_ships_sunk(child_grid)) {
-                printf("Parent: I win! I sank all of the child's ships.\n");
-                printf("(Parent)First player's final grid:\n");
+                printf("Parent: I win! I sank all of the child's ships.\n\n");
+                printf("Parent's final grid:\n");
         	print_grid(parent_grid);
-         	printf("(Child)Second player's final grid:\n");
+         	printf("Child's final grid:\n");
         	print_grid(child_grid);
                 kill(pid, SIGTERM);
                 exit(0);
@@ -179,10 +177,10 @@ int main() {
             write(parent_to_child[1], parent_grid, sizeof(parent_grid)); 
 
  	    if (all_ships_sunk(parent_grid)) {
-                printf("Parent: Child wins! All my ships have been sunk.\n");
-                printf("(Parent)First player's final grid:\n");
+                printf("Parent: Child wins! All my ships have been sunk.\n\n");
+                printf("Parent's final grid:\n");
         	print_grid(parent_grid);
-         	printf("(Child)Second player's final grid:\n");
+         	printf("Child's final grid:\n");
         	print_grid(child_grid);
                 kill(pid, SIGTERM);
                 exit(0);
