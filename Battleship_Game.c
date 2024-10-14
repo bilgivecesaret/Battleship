@@ -9,7 +9,7 @@
 #define SHIPS 4
 #define TILE '.'
 #define SHIP 'S'
-#define HIT 'H'
+#define HIT 'X'
 #define MISS 'O'
 
 #define READ_END	0
@@ -90,7 +90,7 @@ int main() {
     pipe(child_to_parent);
     
     //Initial information message
-    printf("\n>>>>>>>>>> .:Tile, S:Ship, H:Hit, O: Miss <<<<<<<<<<\n\n");
+    printf("\n>>>>>>>>>> .:Tile, S:Ship, X:Hit, O: Miss <<<<<<<<<<\n\n");
     pid_t pid = fork(); 
 
     if(pid == -1){//handles fail case if it occurs, returns with fail case('1')
