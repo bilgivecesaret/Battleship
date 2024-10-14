@@ -69,6 +69,10 @@ void process_guess(char grid[GRID_SIZE][GRID_SIZE], int x, int y) {
 }
 
 int main() {
+
+    char parent_grid[GRID_SIZE][GRID_SIZE];
+    char child_grid[GRID_SIZE][GRID_SIZE];
+    
     srand(time(NULL));//uses current time to create a seed for random generator
 
     int parent_to_child[2];  // Pipe: parent -> child
@@ -78,16 +82,14 @@ int main() {
     pipe(parent_to_child);
     pipe(child_to_parent);
 
-    pid_t pid = fork();
-    
-    char parent_grid[GRID_SIZE][GRID_SIZE];
-    char child_grid[GRID_SIZE][GRID_SIZE];
+    pid_t pid = fork(); 
 
-    if(pid==-1){//handles fail case if it occurs, returns with fail case('1')
+    if(pid == -1){//handles fail case if it occurs, returns with fail case('1')
         perror("Failed to create child process ");
         return 1;
     }    
-    else if (pid == 0) {  // Child process
+    
+    if (pid == 0) {  // Child process
         close(parent_to_child[1]);  // Close write-end of parent-to-child pipe 
         close(child_to_parent[0]);  // Close read-end of child-to-parent pipe 
        
@@ -115,7 +117,7 @@ int main() {
          	printf("Child's final grid:\n");
         	print_grid(child_grid);
                 kill(getppid(), SIGTERM);  // Terminate the parent
-                exit(0);
+                return 0;
             }
 
             // Child's turn to attack
@@ -132,7 +134,7 @@ int main() {
          	printf("Child's final grid:\n");
         	print_grid(child_grid);
                 kill(getppid(), SIGTERM);
-                exit(0);
+                return 0;
             }
         }
 
@@ -159,11 +161,11 @@ int main() {
             if (all_ships_sunk(child_grid)) {
                 printf("Parent: I win! I sank all of the child's ships.\n\n");
                 printf("Parent's final grid:\n");
-        	print_grid(parent_grid);
-         	printf("Child's final grid:\n");
-        	print_grid(child_grid);
+        	    print_grid(parent_grid);
+         	    printf("Child's final grid:\n");
+        	    print_grid(child_grid);
                 kill(pid, SIGTERM);
-                exit(0);
+                return 0;
             }
             
 
@@ -176,18 +178,16 @@ int main() {
             process_guess(parent_grid, x, y); 
             write(parent_to_child[1], parent_grid, sizeof(parent_grid)); 
 
- 	    if (all_ships_sunk(parent_grid)) {
+ 	        if (all_ships_sunk(parent_grid)) {
                 printf("Parent: Child wins! All my ships have been sunk.\n\n");
                 printf("Parent's final grid:\n");
-        	print_grid(parent_grid);
-         	printf("Child's final grid:\n");
-        	print_grid(child_grid);
+        	    print_grid(parent_grid);
+         	    printf("Child's final grid:\n");
+        	    print_grid(child_grid);
                 kill(pid, SIGTERM);
-                exit(0);
+                return 0;
             }
             
         }
     }
-
-    return 0;
 }
