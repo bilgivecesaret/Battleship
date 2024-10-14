@@ -7,12 +7,19 @@
 
 #define GRID_SIZE 4
 #define SHIPS 4
+#define TILE '.'
+#define SHIP 'S'
+#define HIT 'H'
+#define MISS 'O'
+
+#define READ_END	0
+#define WRITE_END	1
 
 // Function to generate a grid with randomly placed ships
 void generate_grid(char grid[GRID_SIZE][GRID_SIZE]) {
     for (int i = 0; i < GRID_SIZE; i++) {
         for (int j = 0; j < GRID_SIZE; j++) {
-            grid[i][j] = '.';
+            grid[i][j] = TILE;
         }
     }
 
@@ -20,8 +27,8 @@ void generate_grid(char grid[GRID_SIZE][GRID_SIZE]) {
     while (ships_placed < SHIPS) {
         int x = rand() % GRID_SIZE;
         int y = rand() % GRID_SIZE;
-        if (grid[x][y] == '.') {
-            grid[x][y] = 'S';  // Place ship
+        if (grid[x][y] == TILE) {
+            grid[x][y] = SHIP;  // Place ship
             ships_placed++;
         }
     }
@@ -48,7 +55,7 @@ void choose_random_point(int *x, int *y) {
 bool all_ships_sunk(char grid[GRID_SIZE][GRID_SIZE]) {
     for (int i = 0; i < GRID_SIZE; i++) {
         for (int j = 0; j < GRID_SIZE; j++) {
-            if (grid[i][j] == 'S') {
+            if (grid[i][j] == SHIP) {
                 return false;
             }
         }
@@ -58,13 +65,13 @@ bool all_ships_sunk(char grid[GRID_SIZE][GRID_SIZE]) {
 
 // Function to process a hit or miss
 void process_guess(char grid[GRID_SIZE][GRID_SIZE], int x, int y) {
-    if (grid[x][y] == 'S') {
-        grid[x][y] = 'X';  // Mark as hit
+    if (grid[x][y] == SHIP) {
+        grid[x][y] = HIT;  // Mark as hit
     }
-    else if(grid[x][y] == 'X') {
-        grid[x][y] = 'X'; 
+    else if(grid[x][y] == HIT) {
+        grid[x][y] = HIT; 
     }else{
-    	grid[x][y] = 'O'; 
+    	grid[x][y] = MISS; 
     }    
 }
 
@@ -81,7 +88,9 @@ int main() {
     // Create pipes
     pipe(parent_to_child);
     pipe(child_to_parent);
-
+    
+    //Initial information message
+    printf("\n>>>>>>>>>> .:Tile, S:Ship, H:Hit, O: Miss <<<<<<<<<<\n\n");
     pid_t pid = fork(); 
 
     if(pid == -1){//handles fail case if it occurs, returns with fail case('1')
@@ -90,8 +99,8 @@ int main() {
     }    
     
     if (pid == 0) {  // Child process
-        close(parent_to_child[1]);  // Close write-end of parent-to-child pipe 
-        close(child_to_parent[0]);  // Close read-end of child-to-parent pipe 
+        close(parent_to_child[WRITE_END]);  // Close write-end of parent-to-child pipe 
+        close(child_to_parent[READ_END]);  // Close read-end of child-to-parent pipe 
        
         srand(time(NULL)*13);//unique seed to avoid same grid
         generate_grid(child_grid);
@@ -102,45 +111,45 @@ int main() {
             int x, y;
             
             // Read parent's attack coordinates
-            read(parent_to_child[0], &x, sizeof(int));
-            read(parent_to_child[0], &y, sizeof(int));
+            read(parent_to_child[READ_END], &x, sizeof(int));
+            read(parent_to_child[READ_END], &y, sizeof(int));
 
             // Process the attack
             process_guess(child_grid, x, y); 
-            write(child_to_parent[1], child_grid, sizeof(child_grid));                       
+            write(child_to_parent[WRITE_END], child_grid, sizeof(child_grid));                       
 
             // Check if all ships are sunk
             if (all_ships_sunk(child_grid)) {
                 printf("Child: Parent wins! All my ships have been sunk.\n\n");
                 printf("Parent's final grid:\n");
-        	print_grid(parent_grid);
-         	printf("Child's final grid:\n");
-        	print_grid(child_grid);
+        	    print_grid(parent_grid);
+         	    printf("Child's final grid:\n");
+        	    print_grid(child_grid);
                 kill(getppid(), SIGTERM);  // Terminate the parent
                 return 0;
             }
 
             // Child's turn to attack
             choose_random_point(&x, &y);
-            write(child_to_parent[1], &x, sizeof(int));
-            write(child_to_parent[1], &y, sizeof(int));
+            write(child_to_parent[WRITE_END], &x, sizeof(int));
+            write(child_to_parent[WRITE_END], &y, sizeof(int));
 
             // Get parent's result
-            read(parent_to_child[0], parent_grid, sizeof(parent_grid));
+            read(parent_to_child[READ_END], parent_grid, sizeof(parent_grid));
             if (all_ships_sunk(parent_grid)) {
                 printf("Child: I win! I sank all of the parent's ships.\n\n");
                 printf("Parent's final grid:\n");
-        	print_grid(parent_grid);
-         	printf("Child's final grid:\n");
-        	print_grid(child_grid);
+        	    print_grid(parent_grid);
+         	    printf("Child's final grid:\n");
+        	    print_grid(child_grid);
                 kill(getppid(), SIGTERM);
                 return 0;
             }
         }
 
     } else {  // Parent process
-        close(parent_to_child[0]);  // Close read-end of parent-to-child pipe **"the parent only reads from this pipe"
-        close(child_to_parent[1]);  // Close write-end of child-to-parent pipe **"the parent only writes to this pipe"
+        close(parent_to_child[READ_END]);  // Close read-end of parent-to-child pipe 
+        close(child_to_parent[WRITE_END]);  // Close write-end of child-to-parent pipe 
 
         generate_grid(parent_grid);
         printf("Parent's initial grid:\n");
@@ -151,12 +160,11 @@ int main() {
 
             // Parent's turn to attack
             choose_random_point(&x, &y);
-            write(parent_to_child[1], &x, sizeof(int));
-            write(parent_to_child[1], &y, sizeof(int));
-            
+            write(parent_to_child[WRITE_END], &x, sizeof(int));
+            write(parent_to_child[WRITE_END], &y, sizeof(int));            
             
             // Get child's result
-            read(child_to_parent[0], child_grid, sizeof(child_grid));      
+            read(child_to_parent[READ_END], child_grid, sizeof(child_grid));      
             
             if (all_ships_sunk(child_grid)) {
                 printf("Parent: I win! I sank all of the child's ships.\n\n");
@@ -166,17 +174,15 @@ int main() {
         	    print_grid(child_grid);
                 kill(pid, SIGTERM);
                 return 0;
-            }
-            
+            }            
 
             // Receive attack coordinates from child
-            read(child_to_parent[0], &x, sizeof(int));
-            read(child_to_parent[0], &y, sizeof(int));
-
+            read(child_to_parent[READ_END], &x, sizeof(int));
+            read(child_to_parent[READ_END], &y, sizeof(int));
             
             // Process the attack
             process_guess(parent_grid, x, y); 
-            write(parent_to_child[1], parent_grid, sizeof(parent_grid)); 
+            write(parent_to_child[WRITE_END], parent_grid, sizeof(parent_grid)); 
 
  	        if (all_ships_sunk(parent_grid)) {
                 printf("Parent: Child wins! All my ships have been sunk.\n\n");
@@ -186,8 +192,8 @@ int main() {
         	    print_grid(child_grid);
                 kill(pid, SIGTERM);
                 return 0;
-            }
-            
+            }            
         }
     }
+    return 0;
 }
