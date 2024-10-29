@@ -14,54 +14,54 @@
 #define MISS 'O'
 
 // Structure for the battlefield
-typedef struct
+typedef struct 
 {
     char parentGrid[GRID_SIZE][GRID_SIZE]; // Parent's grid
     char childGrid[GRID_SIZE][GRID_SIZE];  // Child's grid
-    int turn;                              // To track whose turn it is
-    int remainingShipsHealthPar;                 // Number of parent's ships left
-    int remainingShipsHealthChild;               // Number of child's ships left
+    int turn;				   // To track whose turn it is
+    int remainingShipsHealthPar;		 // Number of parent's ships left
+    int remainingShipsHealthChild;		 // Number of child's ships left
 } BattleFieldInfo;
 
-typedef struct
+typedef struct 
 {
     int size;
     int dx;
     int dy;
-
+    
 } Ship;
 
-void initializeMap(char grid[GRID_SIZE][GRID_SIZE])
+void initializeMap(char grid[GRID_SIZE][GRID_SIZE]) 
 { // initializes the map by placing 'O' on each tile
-    for (int i = 0; i < GRID_SIZE; i++)
+    for (int i = 0; i < GRID_SIZE; i++) 
     {
-        for (int j = 0; j < GRID_SIZE; j++)
+        for (int j = 0; j < GRID_SIZE; j++) 
         {
             grid[i][j] = TILE;
         }
     }
 }
 
-int isPlaceAvailable(int x, int y, char grid[GRID_SIZE][GRID_SIZE], Ship ship, int dx, int dy)
+int isPlaceAvailable(int x, int y, char grid[GRID_SIZE][GRID_SIZE], Ship ship, int dx, int dy) 
 {
-    for (int i = 0; i < ship.size; i++)
+    for (int i = 0; i < ship.size; i++) 
     {
         int nx = x + i * dx;
         int ny = y + i * dy;
-
+        
         if (nx < 0 || nx >= GRID_SIZE || ny < 0 || ny >= GRID_SIZE || grid[ny][nx] != TILE)
         {
             return 0;
         }
         //
-        for (int row = ny - 1; row <= ny + 1; row++)
+        for (int row = ny - 1; row <= ny + 1; row++) 
         { // checks row by row
-            for (int col = nx - 1; col <= nx + 1; col++)
+            for (int col = nx - 1; col <= nx + 1; col++) 
             { // checks column by column
-                if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE)
+                if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) 
                 {
-                    if (grid[row][col] == SHIP)
-                        return 0;
+                    if (grid[row][col] == SHIP) 
+                    	return 0;
                 }
             }
         }
@@ -95,19 +95,28 @@ void placeRandomShips(char grid[GRID_SIZE][GRID_SIZE], Ship ships[])
     }
 }
 
-void displayMap(char grid[GRID_SIZE][GRID_SIZE],int turn)
-{   
-    char* playerName=turn==1?"child":"parent";
+void displayMap(char grid[GRID_SIZE][GRID_SIZE], int turn)
+{
+    char *playerName=turn==1?"child":"parent";
     printf("\n%s's field:\n", playerName);
-    for (int i = 0; i < GRID_SIZE; i++)
+    for (int i = 0; i < GRID_SIZE; i++) 
     {
-        for (int j = 0; j < GRID_SIZE; j++)
+        for (int j = 0; j < GRID_SIZE; j++) 
         {
             printf("%c ", grid[i][j]);
         }
         printf("\n");
     }
     printf("\n");
+}
+void displayGrids(BattleFieldInfo *state, int gridsCreated) 
+{
+    if (!gridsCreated) {
+        printf("You have to create first grids first!\n");
+    } else {
+        displayMap(state->parentGrid, 0);
+        displayMap(state->childGrid, 1);
+    }
 }
 int *getAdjacentPoint(char grid[GRID_SIZE][GRID_SIZE], int y, int x)
 {
@@ -205,90 +214,150 @@ void makeMove(BattleFieldInfo *state)
     printf("%s->%s attack:%d , %d\n--------------------------\n",z,playerName,y,x);
 }
 
-void createShips(Ship *ships)
+void createShips(Ship *ships) 
 {
     int sizeOfShips[SHIPS] = {2, 2, 3, 3, 4};
-    for (int i = 0; i < SHIPS; i++)
-    {   
+    for (int i = 0; i < SHIPS; i++) 
+    {
         ships[i].size = sizeOfShips[i];
     }
 }
 
-int main()
+void createFirstGrids(BattleFieldInfo *state, Ship ships[], int *gridsCreated) // This method creates the game's first grids
 {
-    srand(time(NULL)*13);
+        initializeMap(state->parentGrid);
+        initializeMap(state->childGrid);
+        placeRandomShips(state->parentGrid, ships);
+        placeRandomShips(state->childGrid, ships);
+        state->remainingShipsHealthChild = 14;
+        state->remainingShipsHealthPar = 14;
+        state->turn = 0;
+        *gridsCreated = 1;
+        printf("New grids created!\n");
+}
 
+void startGame(BattleFieldInfo *state, int gridsCreated) { //This method starts game also if first grids are not created displays a warning. 
+    if (gridsCreated) 
+    {
+        printf("New game started!\n");
+
+        while (state->remainingShipsHealthPar > 0 && state->remainingShipsHealthChild > 0) {
+            makeMove(state);
+            state->turn = !state->turn;
+        }
+
+        if (state->remainingShipsHealthPar == 0) 
+        {
+            printf("\nChild wins! Final Grids:\n");
+        } 
+        else 
+        {
+            printf("\nParent wins! Final Grids:\n");
+        }
+        displayGrids(state,gridsCreated);
+    } 
+    else 
+    {
+        printf("Please create first grids first!\n");
+    }
+}
+
+void reLocateShips(BattleFieldInfo *state, Ship ships[], int *gridsCreated) { // This method places ships random again also if first grids are not exist displays an warning.
+	
+    if (*gridsCreated == 0) 
+    {
+        printf("First grids are not exist!\n");
+    } 
+    else
+    {
+        initializeMap(state->parentGrid);
+        initializeMap(state->childGrid);
+        placeRandomShips(state->parentGrid, ships);
+        placeRandomShips(state->childGrid, ships);
+        state->remainingShipsHealthChild = 14;
+        state->remainingShipsHealthPar = 14;
+        printf("Ships relocated!\n");
+    }
+    
+}
+
+void displayMenu() { // Menu Method.
+    printf("------------------------------\n");
+    printf("1: Create First Grids\n");
+    printf("2: Start Game\n");
+    printf("3: Display Grids\n");
+    printf("4: Relocate Ships\n");
+    printf("5: Exit Game\n");
+    printf("------------------------------\n");
+    printf("Choose an option: ");
+}
+
+int main() {
+    srand(time(NULL) * 13);
+    
     const char *shm_name = "Battlefield"; // name of the shared memory object
     int shm_fd = shm_open(shm_name, O_CREAT | O_RDWR, 0666);
     // Truncate shared memory to the size of battlefild
     ftruncate(shm_fd, sizeof(BattleFieldInfo));
-
+    
     BattleFieldInfo *state = mmap(0, sizeof(BattleFieldInfo), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
-    // Initializes maps
-    initializeMap(state->parentGrid);
-    initializeMap(state->childGrid);
-    printf("%d\n",state->turn);
-    state->remainingShipsHealthChild = 14;
-    state->remainingShipsHealthPar = 14;
+    Ship ships[SHIPS];
+    createShips(ships);
 
+    int choice, gameRunning = 1;
+    int isGameRunning = 1;
+    int gridsCreated = 0;
+    
     pid_t pid = fork(); // creates child process
     if (pid == -1)
     { // failed to fork
         exit(1);
     }
-    Ship ships[SHIPS];
-    createShips(ships);
-    if (pid == 0)
-    {   
-        placeRandomShips(state->childGrid, ships);
-        while (state->remainingShipsHealthPar > 0 && state->remainingShipsHealthChild > 0)
-        { // continues if both side have at least one ship
+    else if(pid == 0)
+    {
+    while (gameRunning) {
+        displayMenu();
+        scanf("%d", &choice);
 
-            if (!state->turn)
-            {
-                makeMove(state);
-                if (state->remainingShipsHealthPar > 0 && state->remainingShipsHealthChild > 0)
-                    state->turn = 1;
-            }
-        }
-        usleep(5);
-        if (state->remainingShipsHealthPar == 0)
-        {
-            printf("\nChild wins! Final Grids:\n");
-            displayMap(state->parentGrid, 0);
-            displayMap(state->childGrid, 1);
-        }
+        switch (choice) {
+            case 1:
+                createFirstGrids(state, ships, &gridsCreated);
+                break;
 
-        exit(0); // exit child process
+            case 2:
+                startGame(state, gridsCreated);
+                break;
+
+            case 3:
+                displayGrids(state,gridsCreated);
+                break;
+
+            case 4:
+                reLocateShips(state, ships, &gridsCreated);
+                break;
+
+            case 5:
+                printf("Exiting game. \n");
+                gameRunning = 0;
+                break;
+
+            default:
+                printf("Invalid option. Please choose again.\n");
+                break;
+        	}
+    	}
     }
     else
     {
-        placeRandomShips(state->parentGrid, ships);
-        while (state->remainingShipsHealthPar > 0 && state->remainingShipsHealthChild > 0)
-        { // continues if both side have at least one ship
-
-            if (state->turn)
-            {
-                makeMove(state);
-                if (state->remainingShipsHealthPar > 0 && state->remainingShipsHealthChild > 0)
-                    state->turn = 0;
-            }
-        }
-        usleep(5);
-        // Wait for child process to end
-        wait(NULL);
-        if (state->remainingShipsHealthChild == 0)
-        {
-            printf("\nParent wins! Final Grids:\n");
-            displayMap(state->parentGrid, 0);
-            displayMap(state->childGrid, 1);
-        }
+    wait(NULL);
     }
+
+    
 
     // Cleanup the shared memory region(battlefield)
     munmap(state, sizeof(BattleFieldInfo));
     shm_unlink(shm_name);
-
     return 0;
 }
+
