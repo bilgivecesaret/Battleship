@@ -39,17 +39,20 @@ typedef struct
     Ship childShips[SHIPS];
 } BattleFieldInfo;
 
-int isPlaceAvailable(int x, int y, char grid[ROW_SIZE][ROW_SIZE], Ship ship, int dx, int dy);
-void locateShips(char grid[ROW_SIZE][ROW_SIZE]);
-int *getAdjacentPoint(char grid[ROW_SIZE][ROW_SIZE], int y, int x);
-int aiMove(BattleFieldInfo *state);
-void changePos(int *arr, int y, int x);
-int isInsideGrid(int y, int x);
-int isShip(char sign);
-Ship *getShip(BattleFieldInfo *state, char sign);
-void initializeMap(char grid[ROW_SIZE][ROW_SIZE]);
-void displayMap(BattleFieldInfo *state, int turn);
-int isGameOver(BattleFieldInfo *state);
+void displayMap(BattleFieldInfo *state, int turn)
+{
+    char(*grid)[ROW_SIZE] = (turn == 1) ? state->parentGrid : state->childGrid;
+    printf("Player %s's Grid:\n", !turn ? "child" : "parent");
+    for (int i = 0; i < ROW_SIZE; i++)
+    {
+        for (int j = 0; j < ROW_SIZE; j++)
+        {
+            printf("%c ", grid[i][j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
 
 int isPlaceAvailable(int x, int y, char grid[ROW_SIZE][ROW_SIZE], Ship ship, int dx, int dy)
 {
@@ -94,148 +97,23 @@ void locateShips(char grid[ROW_SIZE][ROW_SIZE])
         }
     }
 }
-int *getAdjacentPoint(char grid[ROW_SIZE][ROW_SIZE], int y, int x)
+int *getAdjacentPoint(char grid[ROW_SIZE][ROW_SIZE], int y, int x)//better approximation to estimate next points: down->right->up->left
 {
     static int point[2];
     point[0] = y;
     point[1] = x;
     if (y + 1 < ROW_SIZE && !(grid[y + 1][x] == MISS || grid[y + 1][x] == HIT))
         point[0] = y + 1;
-    else if (y - 1 >= 0 && !(grid[y - 1][x] == MISS || grid[y - 1][x] == HIT))
-        point[0] = y - 1;
     else if (x + 1 < ROW_SIZE && !(grid[y][x + 1] == MISS || grid[y][x + 1] == HIT))
         point[1] = x + 1;
+    else if (y - 1 >= 0 && !(grid[y - 1][x] == MISS || grid[y - 1][x] == HIT))
+        point[0] = y - 1;
     else if (x - 1 >= 0 && !(grid[y][x - 1] == MISS || grid[y][x - 1] == HIT))
         point[1] = x - 1;
 
     return point;
 }
-/*
-int *getAdjacentPoint(char grid[ROW_SIZE][ROW_SIZE], int y, int x) {
-    char up = (y - 1 >= 0) ? grid[y - 1][x] : '\0';
-    char down = (y + 1 < ROW_SIZE) ? grid[y + 1][x] : '\0';
-    char right = (x + 1 < ROW_SIZE) ? grid[y][x + 1] : '\0';
-    char left = (x - 1 >= 0) ? grid[y][x - 1] : '\0';
-
-    int ny = !(down == MISS || down == HIT) ? 1 : (!(up == MISS || up == HIT)  ? -1 : 0);
-    int nx = ny==0 ?0:(!(right == MISS || right == HIT) ? 1 : (!(left == MISS || left == HIT) ? -1 : 0));
-
-    static int point[2];
-    point[0] = y + ny;
-    point[1] = x + nx;
-
-    return point;
-}*/
-
-int aiMove(BattleFieldInfo *state)
-{
-    char *pName = state->turn ? "child" : "parent";
-    char(*grid)[ROW_SIZE] = (state->turn == 1) ? state->parentGrid : state->childGrid;
-
-    static int lastHit[2] = {-1, -1};
-    static int hitDirect[2] = {0, 0}; // up-down, left-right
-    static int combo = 0;
-    static int missCombo = 0;
-    if (combo > 1 && missCombo < 2 && (hitDirect[0] != 0 || hitDirect[1] != 0))
-    {   
-        if(!isInsideGrid(lastHit[0] + hitDirect[0],lastHit[1] + hitDirect[1])){
-            changePos(hitDirect, hitDirect[0] * -combo, hitDirect[1] * -combo);
-        }
-        int aiEst[2] = {lastHit[0] + hitDirect[0], lastHit[1] + hitDirect[1]};
-        if (isInsideGrid(aiEst[0], aiEst[1]))
-        {
-            char *pointSign = &grid[aiEst[0]][aiEst[1]];
-            if (isShip(*pointSign))
-            {
-                Ship *ship = getShip(state, *pointSign);
-                ship->size = ship->size - 1;
-                *pointSign = HIT;
-                combo += 1;
-                changePos(hitDirect, (aiEst[0] - lastHit[0]) % 2, (aiEst[1] - lastHit[1]) % 2);
-                changePos(lastHit, aiEst[0], aiEst[1]);
-                printf("%s directed ai hit  %d,%d \n", pName, aiEst[0], aiEst[1]);
-                displayMap(state, state->turn);
-                return 1;
-            }
-            else if (*pointSign == TILE)
-            {
-                *pointSign = MISS;
-                missCombo += 1;
-                printf("%s directed ai miss  %d,%d\n", pName, aiEst[0], aiEst[1]);
-                displayMap(state, state->turn);
-                if (missCombo >= 2)
-                {
-                    combo = 0;
-                    missCombo = 0;
-                    lastHit[0] = -1;
-                }
-                else
-                {
-                    changePos(hitDirect, hitDirect[0] * -combo, hitDirect[1] * -combo);
-                }
-                return 1;
-            }
-        }
-        missCombo += 1;
-    }
-    else if (lastHit[0] != -1)
-    {
-        int *aiEst = getAdjacentPoint(grid, lastHit[0], lastHit[1]);
-        if (aiEst[0] != lastHit[0] || aiEst[1] != lastHit[1])
-        {
-            char *pointSign = &grid[aiEst[0]][aiEst[1]];
-            if (isShip(*pointSign))
-            {
-                Ship *ship = getShip(state, *pointSign);
-                ship->size = ship->size - 1;
-                *pointSign = HIT;
-                combo += 1;
-                changePos(hitDirect, aiEst[0] - lastHit[0], aiEst[1] - lastHit[1]);
-                changePos(lastHit, aiEst[0], aiEst[1]);
-                printf("%s, ai estimated hit %d,%d\n", pName, aiEst[0], aiEst[1]);
-                displayMap(state, state->turn);
-            }
-            else if (*pointSign == TILE)
-            {
-                *pointSign = MISS;
-                printf("%s, ai estimated miss %d,%d\n", pName, aiEst[0], aiEst[1]);
-                displayMap(state, state->turn);
-            }
-            return 1;
-        }
-        lastHit[0] = -1;
-    }
-
-    combo = 0;
-    missCombo = 0;
-    while (1)
-    {
-
-        int x = rand() % ROW_SIZE;
-        int y = rand() % ROW_SIZE;
-        char *pointSign = &grid[y][x];
-        if (isShip(*pointSign))
-        {
-            Ship *ship = getShip(state, *pointSign);
-            ship->size = ship->size - 1;
-            *pointSign = HIT;
-            combo += 1;
-            printf("%s random hit %d,%d\n", pName, y, x);
-            displayMap(state, state->turn);
-            changePos(lastHit, y, x);
-            return 1;
-        }
-        else if (*pointSign == TILE)
-        {
-            *pointSign = MISS;
-            printf("%s random miss %d,%d\n", pName, y, x);
-            displayMap(state, state->turn);
-            return 1;
-        }
-    }
-}
-
-void changePos(int *arr, int y, int x)
+void updatePosition(int *arr, int y, int x)
 {
     arr[0] = y;
     arr[1] = x;
@@ -262,27 +140,114 @@ Ship *getShip(BattleFieldInfo *state, char sign)
 
     return NULL;
 }
+int aiMove(BattleFieldInfo *state)
+{
+    char *pName = state->turn ? "child" : "parent";
+    char(*grid)[ROW_SIZE] = (state->turn == 1) ? state->parentGrid : state->childGrid;
+
+    static int lastHit[2] = {-1, -1};
+    static int hitDirect[2] = {0, 0}; // (up-down, left-right)
+    static int combo = 0;
+    if (combo > 1)//that means both random and estimated ai hitted a point
+    {   
+        if(!isInsideGrid(lastHit[0] + hitDirect[0],lastHit[1] + hitDirect[1])){
+            updatePosition(hitDirect, hitDirect[0] * -combo, hitDirect[1] * -combo);
+        }
+        int aiEst[2] = {lastHit[0] + hitDirect[0], lastHit[1] + hitDirect[1]};
+        if (isInsideGrid(aiEst[0], aiEst[1]))
+        {
+            char *pointSign = &grid[aiEst[0]][aiEst[1]];
+            if (isShip(*pointSign))
+            {
+                Ship *ship = getShip(state, *pointSign);
+                *pointSign = HIT;
+                printf("%s directed ai hit  %d,%d \n", pName, aiEst[0], aiEst[1]);
+                displayMap(state, state->turn);
+                if((ship->size-=1)<=0){
+                    combo=0;
+                    lastHit[0]=-1;
+                    return 1;
+                }
+                combo += 1;
+                updatePosition(hitDirect, (aiEst[0] - lastHit[0]) % 2, (aiEst[1] - lastHit[1]) % 2);//readjust the direction {-1,0,1}
+                updatePosition(lastHit, aiEst[0], aiEst[1]);
+                return 1;
+            }
+            else if (*pointSign == TILE)
+            {
+                *pointSign = MISS;
+                printf("%s directed ai miss  %d,%d\n", pName, aiEst[0], aiEst[1]);
+                displayMap(state, state->turn);
+                updatePosition(hitDirect, hitDirect[0] * -combo, hitDirect[1] * -combo);//reverse the direction If the ship hasn't sunk yet 
+                return 1;
+            }
+        }
+    }
+    else if (lastHit[0] != -1)
+    {
+        int *aiEst = getAdjacentPoint(grid, lastHit[0], lastHit[1]);
+        if (aiEst[0] != lastHit[0] || aiEst[1] != lastHit[1])
+        {
+            char *pointSign = &grid[aiEst[0]][aiEst[1]];
+            if (isShip(*pointSign))
+            {
+                Ship *ship = getShip(state, *pointSign);
+                *pointSign = HIT;
+                printf("%s, ai estimated hit %d,%d\n", pName, aiEst[0], aiEst[1]);
+                displayMap(state, state->turn);
+                if((ship->size-=1)<=0){
+                    combo=0;
+                    lastHit[0]=-1;
+                    return 1;
+                }
+                combo += 1;
+                updatePosition(hitDirect, aiEst[0] - lastHit[0], aiEst[1] - lastHit[1]);
+                updatePosition(lastHit, aiEst[0], aiEst[1]);
+            }
+            else if (*pointSign == TILE)
+            {
+                *pointSign = MISS;
+                printf("%s, ai estimated miss %d,%d\n", pName, aiEst[0], aiEst[1]);
+                displayMap(state, state->turn);
+            }
+            return 1;
+        }
+        lastHit[0] = -1;
+    }
+
+    combo = 0;
+    while (1)
+    {
+
+        int x = rand() % ROW_SIZE;
+        int y = rand() % ROW_SIZE;
+        char *pointSign = &grid[y][x];
+        if (isShip(*pointSign))
+        {
+            Ship *ship = getShip(state, *pointSign);
+            ship->size = ship->size - 1;
+            *pointSign = HIT;
+            combo += 1;
+            printf("%s random hit %d,%d\n", pName, y, x);
+            displayMap(state, state->turn);
+            updatePosition(lastHit, y, x);
+            return 1;
+        }
+        else if (*pointSign == TILE)
+        {
+            *pointSign = MISS;
+            printf("%s random miss %d,%d\n", pName, y, x);
+            displayMap(state, state->turn);
+            return 1;
+        }
+    }
+}
 
 void initializeMap(char grid[ROW_SIZE][ROW_SIZE])
 {
     for (int i = 0; i < ROW_SIZE; i++)
         for (int j = 0; j < ROW_SIZE; j++)
             grid[i][j] = TILE;
-}
-
-void displayMap(BattleFieldInfo *state, int turn)
-{
-    char(*grid)[ROW_SIZE] = (turn == 1) ? state->parentGrid : state->childGrid;
-    printf("Player %s's Grid:\n", !turn ? "child" : "parent");
-    for (int i = 0; i < ROW_SIZE; i++)
-    {
-        for (int j = 0; j < ROW_SIZE; j++)
-        {
-            printf("%c ", grid[i][j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
 }
 
 int isGameOver(BattleFieldInfo *state)
@@ -347,6 +312,7 @@ int main()
                 state->turn = !state->turn;
             }
         }
+        //Congratulations message
         exit(0); // exit child process
     }
     else
@@ -359,6 +325,7 @@ int main()
                 state->turn = !state->turn;
             }
         }
+        //Congratulations message
         wait(NULL);
     }
 
