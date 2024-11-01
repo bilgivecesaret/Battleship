@@ -273,61 +273,119 @@ int isGameOver(BattleFieldInfo *state)
         }
     }
 
+    static int gameOver=0;
+    char *whoWin=!parentShipsAlive?"Child":(!childShipsAlive?"Parent":NULL);
+    if(!gameOver &&whoWin){
+        gameOver=1;
+        printf("%s won the game!\n",whoWin);
+    }
+
     return !(parentShipsAlive && childShipsAlive);
 }
 
-int main()
-{
+    void createGrids(BattleFieldInfo *state) { //This method creates the grids.
+        initializeMap(state->parentGrid);
+        initializeMap(state->childGrid);
+        locateShips(state->parentGrid);
+        locateShips(state->childGrid);
+        memcpy(state->parShips, ships, sizeof(ships));
+        memcpy(state->childShips, ships, sizeof(ships));
+}
+
+    void displayGrids(BattleFieldInfo *state) { //This method displays the grids.
+        displayMap(state, state->turn);
+        displayMap(state, !state->turn);
+}
+
+    void menu() { // Menu method.
+        printf("1. Create First Grids\n");
+       	printf("2. Start Game\n");
+       	printf("3. Display Grids\n");
+       	printf("4. Relocate Grids\n");
+        printf("5. Exit Game\n");
+        printf("Choose an option: ");
+}
+
+int main() {
     srand(time(NULL) * 13);
 
-    const char *shm_name = "Battlefield"; // name of the shared memory object
+    const char *shm_name = "Battlefield";
     int shm_fd = shm_open(shm_name, O_CREAT | O_RDWR, 0666);
     ftruncate(shm_fd, sizeof(BattleFieldInfo));
 
     BattleFieldInfo *state = mmap(0, sizeof(BattleFieldInfo), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    char choice[1];
+    
+    int createdGrids = 0;
 
-    // Initializes maps
-    initializeMap(state->parentGrid);
-    initializeMap(state->childGrid);
-    locateShips(state->parentGrid);
-    locateShips(state->childGrid);
-    memcpy(state->parShips, ships, sizeof(ships));
-    memcpy(state->childShips, ships, sizeof(ships));
-    displayMap(state, state->turn);
-    displayMap(state, !state->turn);
-    state->turn = rand() % 2;
-    pid_t pid = fork(); // creates child process
-    if (pid == -1)
-    { // failed to fork
-        exit(1);
-    }
-    srand(time(NULL) * getpid());
-    if (pid == 0)
-    {
+    do {	// This loop makes game playable more than one time.
+        menu();
+        scanf("%s", choice);
 
-        while (!isGameOver(state))
-        {
-            if (state->turn && aiMove(state))
-            {
-                state->turn = !state->turn;
+	printf("\n");
+        switch (choice[0]) {
+            case '1':
+                createGrids(state);
+                createdGrids = 1;
+                printf("Grids created.\n\n");
+                break;
+            case '2': {
+            	if(!createdGrids){
+            	printf("You have to create grids first.\n\n");
+            	}
+            	else
+            	{
+                pid_t pid = fork(); // creates child process
+                if (pid == -1) { // failed to fork
+                    exit(1);
+                }
+                if (pid == 0) {
+                    while (!isGameOver(state)) {
+                        if (state->turn && aiMove(state)) {
+                            state->turn = !state->turn;
+                        }
+                    }
+                    //Congratulations message
+                    exit(0); // exit child process
+                } else { 
+                    while (!isGameOver(state)) {
+                        if (!state->turn && aiMove(state)) {
+                            state->turn = !state->turn;
+                        }
+                    }
+                    //Congratulations message
+                    wait(NULL); 
+                    printf("Game completed.\n\n");
+               	    }
+               	}
+               	createdGrids = 0;
+                break;
             }
-        }
-        //Congratulations message
-        exit(0); // exit child process
-    }
-    else
-    {
-
-        while (!isGameOver(state))
-        {
-            if (!state->turn && aiMove(state))
+            case '3':
+            if(!createdGrids){
+            	printf("Grids must be created to display.\n\n");
+            }else
             {
-                state->turn = !state->turn;
+                displayGrids(state);
             }
+                break;
+            case '4':
+            if(!createdGrids){
+            	printf("Grids must be created to relocate.\n\n");
+            }else
+            {
+                createGrids(state);
+                printf("Grids relocated.\n\n");
+            }
+                break;
+            case '5':
+                printf("Exiting game.\n");
+                break;
+            default:
+                printf("Invalid choice.\n\n");
+                break;
         }
-        //Congratulations message
-        wait(NULL);
-    }
+    } while (choice[0] != '5');
 
     // Cleanup the shared memory region(battlefield)
     munmap(state, sizeof(BattleFieldInfo));
@@ -335,3 +393,4 @@ int main()
 
     return 0;
 }
+
