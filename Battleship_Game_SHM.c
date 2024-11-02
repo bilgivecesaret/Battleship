@@ -6,6 +6,7 @@
 #include <time.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <ncurses.h>
 
 #define ROW_SIZE 8
 #define SHIPS 5
@@ -39,19 +40,34 @@ typedef struct
     Ship childShips[SHIPS];
 } BattleFieldInfo;
 
-void displayMap(BattleFieldInfo *state, int turn)
+void displayMap(BattleFieldInfo *state)
 {
-    char(*grid)[ROW_SIZE] = (turn == 1) ? state->parentGrid : state->childGrid;
-    printf("Player %s's Grid:\n", !turn ? "child" : "parent");
+    clear();
+    char(*grid)[ROW_SIZE] = state->parentGrid ;
+    printw("Player %s's Grid:\n", "parent");
     for (int i = 0; i < ROW_SIZE; i++)
     {
         for (int j = 0; j < ROW_SIZE; j++)
         {
-            printf("%c ", grid[i][j]);
+            printw("%c ", grid[i][j]);
         }
-        printf("\n");
+        printw("\n");
     }
-    printf("\n");
+    printw("\n"); 
+    
+    char(*grid2)[ROW_SIZE] = state->childGrid;
+    printw("Player %s's Grid:\n", "child");
+    for (int i = 0; i < ROW_SIZE; i++)
+    {
+        for (int j = 0; j < ROW_SIZE; j++)
+        {
+            printw("%c ", grid2[i][j]);
+        }
+        printw("\n");
+    }
+    printw("\n"); 
+    
+    refresh(); // update terminal   
 }
 
 int isPlaceAvailable(int x, int y, char grid[ROW_SIZE][ROW_SIZE], Ship ship, int dx, int dy)
@@ -161,8 +177,8 @@ int aiMove(BattleFieldInfo *state)
             {
                 Ship *ship = getShip(state, *pointSign);
                 *pointSign = HIT;
-                printf("%s directed ai hit  %d,%d \n", pName, aiEst[0], aiEst[1]);
-                displayMap(state, state->turn);
+                printw("%s directed ai hit  %d,%d \n", pName, aiEst[0], aiEst[1]);                
+                displayMap(state);
                 if((ship->size-=1)<=0){
                     combo=0;
                     lastHit[0]=-1;
@@ -176,8 +192,8 @@ int aiMove(BattleFieldInfo *state)
             else if (*pointSign == TILE)
             {
                 *pointSign = MISS;
-                printf("%s directed ai miss  %d,%d\n", pName, aiEst[0], aiEst[1]);
-                displayMap(state, state->turn);
+                printw("%s directed ai miss  %d,%d\n", pName, aiEst[0], aiEst[1]);
+                displayMap(state);
                 updatePosition(hitDirect, hitDirect[0] * -combo, hitDirect[1] * -combo);//reverse the direction If the ship hasn't sunk yet 
                 return 1;
             }
@@ -193,8 +209,8 @@ int aiMove(BattleFieldInfo *state)
             {
                 Ship *ship = getShip(state, *pointSign);
                 *pointSign = HIT;
-                printf("%s, ai estimated hit %d,%d\n", pName, aiEst[0], aiEst[1]);
-                displayMap(state, state->turn);
+                printw("%s, ai estimated hit %d,%d\n", pName, aiEst[0], aiEst[1]);
+                displayMap(state);
                 if((ship->size-=1)<=0){
                     combo=0;
                     lastHit[0]=-1;
@@ -207,8 +223,8 @@ int aiMove(BattleFieldInfo *state)
             else if (*pointSign == TILE)
             {
                 *pointSign = MISS;
-                printf("%s, ai estimated miss %d,%d\n", pName, aiEst[0], aiEst[1]);
-                displayMap(state, state->turn);
+                printw("%s, ai estimated miss %d,%d\n", pName, aiEst[0], aiEst[1]);
+                displayMap(state);
             }
             return 1;
         }
@@ -228,19 +244,22 @@ int aiMove(BattleFieldInfo *state)
             ship->size = ship->size - 1;
             *pointSign = HIT;
             combo += 1;
-            printf("%s random hit %d,%d\n", pName, y, x);
-            displayMap(state, state->turn);
+            printw("%s random hit %d,%d\n", pName, y, x);
+            displayMap(state);
             updatePosition(lastHit, y, x);
             return 1;
         }
         else if (*pointSign == TILE)
         {
             *pointSign = MISS;
-            printf("%s random miss %d,%d\n", pName, y, x);
-            displayMap(state, state->turn);
+            printw("%s random miss %d,%d\n", pName, y, x);
+            displayMap(state);
             return 1;
         }
-    }
+    }  
+    sleep(0.015625);
+    refresh();
+    clear();
 }
 
 void initializeMap(char grid[ROW_SIZE][ROW_SIZE])
@@ -272,12 +291,12 @@ int isGameOver(BattleFieldInfo *state)
             break;
         }
     }
-
+    sleep(1);
     static int gameOver=0;
     char *whoWin=!parentShipsAlive?"Child":(!childShipsAlive?"Parent":NULL);
     if(!gameOver &&whoWin){
         gameOver=1;
-        printf("%s won the game!\n",whoWin);
+        printw("%s won the game!\n",whoWin);
     }
 
     return !(parentShipsAlive && childShipsAlive);
@@ -292,18 +311,14 @@ int isGameOver(BattleFieldInfo *state)
         memcpy(state->childShips, ships, sizeof(ships));
 }
 
-    void displayGrids(BattleFieldInfo *state) { //This method displays the grids.
-        displayMap(state, state->turn);
-        displayMap(state, !state->turn);
-}
 
     void menu() { // Menu method.
-        printf("1. Create First Grids\n");
-       	printf("2. Start Game\n");
-       	printf("3. Display Grids\n");
-       	printf("4. Relocate Grids\n");
-        printf("5. Exit Game\n");
-        printf("Choose an option: ");
+        printw("1. Create First Grids\n");
+        printw("2. Start Game\n");
+        printw("3. Display Grids\n");
+        printw("4. Relocate Grids\n");
+        printw("5. Exit Game\n");
+        printw("Choose an option: ");
 }
 
 int main() {
@@ -314,78 +329,77 @@ int main() {
     ftruncate(shm_fd, sizeof(BattleFieldInfo));
 
     BattleFieldInfo *state = mmap(0, sizeof(BattleFieldInfo), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    char choice[1];
+    char choice;
     
     int createdGrids = 0;
-
+    initscr(); // login ncurses
+    noecho();
     do {	// This loop makes game playable more than one time.
-        menu();
-        scanf("%s", choice);
-
-	printf("\n");
-        switch (choice[0]) {
+        
+	menu();
+        choice = getch();	
+	printw("\n");
+        switch (choice) {
             case '1':
                 createGrids(state);
                 createdGrids = 1;
-                printf("Grids created.\n\n");
+                printw("Grids created.\n\n");
                 break;
             case '2': {
             	if(!createdGrids){
-            	printf("You have to create grids first.\n\n");
+            		printw("You have to create grids first.\n\n");
             	}
             	else
             	{
-                pid_t pid = fork(); // creates child process
-                if (pid == -1) { // failed to fork
-                    exit(1);
-                }
-                if (pid == 0) {
-                    while (!isGameOver(state)) {
-                        if (state->turn && aiMove(state)) {
-                            state->turn = !state->turn;
-                        }
-                    }
-                    //Congratulations message
-                    exit(0); // exit child process
-                } else { 
-                    while (!isGameOver(state)) {
-                        if (!state->turn && aiMove(state)) {
-                            state->turn = !state->turn;
-                        }
-                    }
-                    //Congratulations message
-                    wait(NULL); 
-                    printf("Game completed.\n\n");
-               	    }
-               	}
-               	createdGrids = 0;
-                break;
+                	pid_t pid = fork(); // creates child process
+                	if (pid == -1) { // failed to fork
+		            	exit(1);
+		        }
+		        if (pid == 0) {		            
+		            while (!isGameOver(state)) {
+		                if (state->turn && aiMove(state)) {
+		                    state->turn = !state->turn;
+		                }
+		            }
+		            exit(0); // exit child process
+		        } else {
+		            while (!isGameOver(state)) {
+		                if (!state->turn && aiMove(state)) {
+		                    state->turn = !state->turn;
+		                }
+		            } 
+		            printw("Game completed.\n\n");
+			 }			 
+       	}
+       	createdGrids = 0;
+               break;
             }
             case '3':
             if(!createdGrids){
-            	printf("Grids must be created to display.\n\n");
+            	printw("Grids must be created to display.\n\n");
             }else
             {
-                displayGrids(state);
+                displayMap(state);
             }
-                break;
+	     break;
             case '4':
             if(!createdGrids){
-            	printf("Grids must be created to relocate.\n\n");
+            	printw("Grids must be created to relocate.\n\n");
             }else
             {
                 createGrids(state);
-                printf("Grids relocated.\n\n");
+                printw("Grids relocated.\n\n");
             }
-                break;
+             break;
             case '5':
-                printf("Exiting game.\n");
+                printw("Exiting game.\n");
                 break;
             default:
-                printf("Invalid choice.\n\n");
+                printw("Invalid choice.\n\n");
                 break;
         }
-    } while (choice[0] != '5');
+    } while (choice != '5');
+    endwin(); // logout ncurses
 
     // Cleanup the shared memory region(battlefield)
     munmap(state, sizeof(BattleFieldInfo));
@@ -393,4 +407,3 @@ int main() {
 
     return 0;
 }
-
