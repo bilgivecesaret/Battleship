@@ -9,16 +9,21 @@ This is an application implemented in the Unix/Linux terminal and aimed at under
 The following steps walk through getting the application running. 
 
 1. [Clone the project](#1-clone-the-project)
-2. [Start the app](#2-start-the-app)
+2. [Install ncurses library] (#2-install-ncurses-library)
+3. [Start the app](#3-start-the-app)
 
 ### 1. Clone the project
 
   [Clone the project](https://github.com/bilgivecesaret/Battleship.git), e.g. `gh repo clone bilgivecesaret/Battleship`
 
-### 2. Start the app
+### 2. Install ncurses library
+
+Type the command "<code><b>sudo apt-get install libncurses5-dev libncursesw5-dev</b></code>" to install ncurses library into the terminal for Ubuntu Linux.
+
+### 3. Start the app
 
 Open the terminal in the location of the "<code><b>Battleship_Game_SHM.c</b></code>" file in the Linux operating system.
 
-Type the command "<code><b>gcc Battleship_Game_SHM.c -o battleship -lrt</b></code>" into the terminal.
+Type the command "<code><b>gcc Battleship_Game_SHM.c -o battleship -lncurses -lrt</b></code>" into the terminal.
 
 Then type the command "<code><b>./battleship</b></code>" to run the application.
