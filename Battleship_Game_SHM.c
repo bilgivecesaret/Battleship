@@ -40,33 +40,50 @@ typedef struct
     Ship childShips[SHIPS];
 } BattleFieldInfo;
 
-void displayMap(BattleFieldInfo *state)
-{
+int getColor(char tileSign){
+    if(tileSign==TILE)
+        return 1;
+    else if(tileSign==HIT)
+        return 2;
+    else if(tileSign==MISS)
+        return 3;
+    else
+        return 4;
+}
+
+void displayMap(BattleFieldInfo *state){
     clear();
-    char(*grid)[ROW_SIZE] = state->parentGrid ;
-    printw("Player %s's Grid:\n", "parent");
-    for (int i = 0; i < ROW_SIZE; i++)
-    {
-        for (int j = 0; j < ROW_SIZE; j++)
-        {
-            printw("%c ", grid[i][j]);
-        }
-        printw("\n");
-    }
-    printw("\n"); 
-    
+    char(*grid)[ROW_SIZE] = state->parentGrid;
     char(*grid2)[ROW_SIZE] = state->childGrid;
-    printw("Player %s's Grid:\n", "child");
-    for (int i = 0; i < ROW_SIZE; i++)
-    {
-        for (int j = 0; j < ROW_SIZE; j++)
-        {
+
+
+    start_color();
+    use_default_colors();
+    init_pair(1, COLOR_WHITE, -1);  // for empty tile
+    init_pair(2, COLOR_RED, -1);    // hit
+    init_pair(3, COLOR_YELLOW, -1); // miss 
+    init_pair(4, COLOR_BLUE, -1);   // ships (DESTROYER, BATTLESHIP, CRUISER)
+
+    printw("Player %s's Grid:      Player %s's Grid:\n", "parent", "child");
+
+    for (int i = 0; i < ROW_SIZE; i++){
+        for (int j = 0; j < ROW_SIZE; j++){
+            attron(COLOR_PAIR(getColor(grid[i][j])));
+            printw("%c ", grid[i][j]);
+            attroff(COLOR_PAIR(1) | COLOR_PAIR(2) | COLOR_PAIR(3) | COLOR_PAIR(4));
+        }
+
+        
+        printw("           ");
+
+        for (int j = 0; j < ROW_SIZE; j++){
+            attron(COLOR_PAIR(getColor(grid2[i][j])));
             printw("%c ", grid2[i][j]);
+            attroff(COLOR_PAIR(1) | COLOR_PAIR(2) | COLOR_PAIR(3) | COLOR_PAIR(4));
         }
         printw("\n");
     }
-    printw("\n"); 
-    
+
     refresh(); // update terminal   
 }
 
@@ -257,7 +274,6 @@ int aiMove(BattleFieldInfo *state)
             return 1;
         }
     }  
-    sleep(0.015625);
     refresh();
     clear();
 }
@@ -358,6 +374,7 @@ int main() {
 		        if (pid == 0) {		            
 		            while (!isGameOver(state)) {
 		                if (state->turn && aiMove(state)) {
+                            sleep(0.2);
 		                    state->turn = !state->turn;
 		                }
 		            }
@@ -365,6 +382,7 @@ int main() {
 		        } else {
 		            while (!isGameOver(state)) {
 		                if (!state->turn && aiMove(state)) {
+                            sleep(0.2);
 		                    state->turn = !state->turn;
 		                }
 		            } 
