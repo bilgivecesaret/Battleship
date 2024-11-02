@@ -9,7 +9,7 @@ This is an application implemented in the Unix/Linux terminal and aimed at under
 The following steps walk through getting the application running. 
 
 1. [Clone the project](#1-clone-the-project)
-2. [Install ncurses library] (#2-install-ncurses-library)
+2. [Install ncurses library](#2-install-ncurses-library)
 3. [Start the app](#3-start-the-app)
 
 ### 1. Clone the project
