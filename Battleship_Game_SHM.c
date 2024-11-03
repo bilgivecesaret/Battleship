@@ -52,7 +52,7 @@ int getColor(char tileSign){
 }
 
 void displayMap(BattleFieldInfo *state){
-    clear();
+    
     char(*grid)[ROW_SIZE] = state->parentGrid;
     char(*grid2)[ROW_SIZE] = state->childGrid;
 
@@ -82,8 +82,7 @@ void displayMap(BattleFieldInfo *state){
             attroff(COLOR_PAIR(1) | COLOR_PAIR(2) | COLOR_PAIR(3) | COLOR_PAIR(4));
         }
         printw("\n");
-    }
-
+    }    
     refresh(); // update terminal   
 }
 
@@ -175,6 +174,7 @@ Ship *getShip(BattleFieldInfo *state, char sign)
 }
 int aiMove(BattleFieldInfo *state)
 {
+    clear();
     char *pName = state->turn ? "child" : "parent";
     char(*grid)[ROW_SIZE] = (state->turn == 1) ? state->parentGrid : state->childGrid;
 
@@ -194,7 +194,7 @@ int aiMove(BattleFieldInfo *state)
             {
                 Ship *ship = getShip(state, *pointSign);
                 *pointSign = HIT;
-                printw("%s directed ai hit  %d,%d \n", pName, aiEst[0], aiEst[1]);                
+                printw("\t%s directed ai hit  %d,%d \n\n", pName, aiEst[0], aiEst[1]);                
                 displayMap(state);
                 if((ship->size-=1)<=0){
                     combo=0;
@@ -209,7 +209,7 @@ int aiMove(BattleFieldInfo *state)
             else if (*pointSign == TILE)
             {
                 *pointSign = MISS;
-                printw("%s directed ai miss  %d,%d\n", pName, aiEst[0], aiEst[1]);
+                printw("\t%s directed ai miss  %d,%d\n\n", pName, aiEst[0], aiEst[1]);
                 displayMap(state);
                 updatePosition(hitDirect, hitDirect[0] * -combo, hitDirect[1] * -combo);//reverse the direction If the ship hasn't sunk yet 
                 return 1;
@@ -226,7 +226,7 @@ int aiMove(BattleFieldInfo *state)
             {
                 Ship *ship = getShip(state, *pointSign);
                 *pointSign = HIT;
-                printw("%s, ai estimated hit %d,%d\n", pName, aiEst[0], aiEst[1]);
+                printw("\t%s, ai estimated hit %d,%d\n\n", pName, aiEst[0], aiEst[1]);
                 displayMap(state);
                 if((ship->size-=1)<=0){
                     combo=0;
@@ -240,7 +240,7 @@ int aiMove(BattleFieldInfo *state)
             else if (*pointSign == TILE)
             {
                 *pointSign = MISS;
-                printw("%s, ai estimated miss %d,%d\n", pName, aiEst[0], aiEst[1]);
+                printw("\t%s, ai estimated miss %d,%d\n\n", pName, aiEst[0], aiEst[1]);
                 displayMap(state);
             }
             return 1;
@@ -261,7 +261,7 @@ int aiMove(BattleFieldInfo *state)
             ship->size = ship->size - 1;
             *pointSign = HIT;
             combo += 1;
-            printw("%s random hit %d,%d\n", pName, y, x);
+            printw("\t%s random hit %d,%d\n\n", pName, y, x);
             displayMap(state);
             updatePosition(lastHit, y, x);
             return 1;
@@ -269,7 +269,7 @@ int aiMove(BattleFieldInfo *state)
         else if (*pointSign == TILE)
         {
             *pointSign = MISS;
-            printw("%s random miss %d,%d\n", pName, y, x);
+            printw("\t%s random miss %d,%d\n\n", pName, y, x);
             displayMap(state);
             return 1;
         }
@@ -312,7 +312,7 @@ int isGameOver(BattleFieldInfo *state)
     char *whoWin=!parentShipsAlive?"Child":(!childShipsAlive?"Parent":NULL);
     if(!gameOver &&whoWin){
         gameOver=1;
-        printw("%s won the game!\n",whoWin);
+        printw("\n\t%s won the game!\n\n",whoWin);
     }
 
     return !(parentShipsAlive && childShipsAlive);
@@ -351,7 +351,7 @@ int main() {
     initscr(); // login ncurses
     noecho();
     do {	// This loop makes game playable more than one time.
-        
+        refresh();
 	menu();
         choice = getch();	
 	printw("\n");
@@ -386,7 +386,7 @@ int main() {
 		                    state->turn = !state->turn;
 		                }
 		            } 
-		            printw("Game completed.\n\n");
+		            printw("\nGame completed.\n\n");
 			 }			 
        	}
        	createdGrids = 0;
@@ -397,6 +397,7 @@ int main() {
             	printw("Grids must be created to display.\n\n");
             }else
             {
+            	clear();
                 displayMap(state);
             }
 	     break;
