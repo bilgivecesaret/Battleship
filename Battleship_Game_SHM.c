@@ -51,22 +51,16 @@ void save_game(BattleFieldInfo *state) {
 	}
 	fwrite(state, sizeof(BattleFieldInfo), 1, file);
 	fclose(file);
-	printw("Game saved successfully!\n");
-	refresh();
 }
 
 // Load the game state from a file
-int load_game(BattleFieldInfo *state) {
+void load_game(BattleFieldInfo *state) {
 	FILE *file = fopen(SAVE_FILE, "rb");
 	if (file == NULL) {
-		printw("No saved game found.\n");
-		return 0; // No save file found
+		return; // No save file found
 	}
 	fread(state, sizeof(BattleFieldInfo), 1, file);
 	fclose(file);
-	printw("Game loaded successfully!\n");
-	refresh();
-	return 1; // Successfully loaded
 }
 
 // Function to check if save file exists
