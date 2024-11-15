@@ -37,6 +37,7 @@ typedef struct
 	char parentGrid[ROW_SIZE][ROW_SIZE]; // Parent's grid
 	char childGrid[ROW_SIZE][ROW_SIZE];  // Child's grid
 	int turn;                            // To track whose turn it is
+	int gameOver;
 	Ship parShips[SHIPS];
 	Ship childShips[SHIPS];
 } BattleFieldInfo;
@@ -205,10 +206,10 @@ Ship *getShip(BattleFieldInfo *state, char sign)
 
 	return NULL;
 }
-int aiMove(BattleFieldInfo *state)
-{
+int aiMove(BattleFieldInfo *state,char *pName)
+{	
+	sleep(1);
 	clear();
-	char *pName = state->turn ? "child" : "parent";
 	char(*grid)[ROW_SIZE] = (state->turn == 1) ? state->parentGrid : state->childGrid;
 
 	static int lastHit[2] = {-1, -1};
@@ -245,6 +246,11 @@ int aiMove(BattleFieldInfo *state)
 				printw("\t%s directed ai miss  %d,%d\n\n", pName, aiEst[0], aiEst[1]);
 				displayMap(state);
 				updatePosition(hitDirect, hitDirect[0] * -combo, hitDirect[1] * -combo);//reverse the direction If the ship hasn't sunk yet
+				return 1;
+			}
+			else if(*pointSign==MISS){
+				updatePosition(hitDirect, hitDirect[0] * -combo, hitDirect[1] * -combo);//reverse the direction If the ship hasn't sunk yet
+				aiMove(state,pName);
 				return 1;
 			}
 		}
@@ -320,6 +326,7 @@ void initializeMap(char grid[ROW_SIZE][ROW_SIZE])
 
 int isGameOver(BattleFieldInfo *state)
 {
+	if(state->gameOver) return 1;
 	int parentShipsAlive = 0;
 	int childShipsAlive = 0;
 
@@ -340,14 +347,14 @@ int isGameOver(BattleFieldInfo *state)
 			break;
 		}
 	}
-	sleep(1);
-	static int gameOver=0;
-	char *whoWin=!parentShipsAlive?"Child":(!childShipsAlive?"Parent":NULL);
-	if(!gameOver &&whoWin) {
-		gameOver=1;
-		printw("\n\t%s won the game!\n\n",whoWin);
+	if(state->turn&&!parentShipsAlive){
+		state->gameOver=1;
+		printw("Parent won the game!\n");
 	}
-
+	else if(!state->turn&&!childShipsAlive){
+		state->gameOver=1;
+		printw("Child won the game!\n");
+	}
 	return !(parentShipsAlive && childShipsAlive);
 }
 
@@ -401,8 +408,7 @@ int main() {
 			}
 			if (pid == 0) {
 				while (!isGameOver(state)) {
-					if (state->turn && aiMove(state)) {
-						sleep(0.5);
+					if (state->turn && aiMove(state,"Child")&&!isGameOver(state)) {
 						state->turn = !state->turn;
 					}
 				}
@@ -410,8 +416,7 @@ int main() {
 				exit(0); // exit child process
 			} else {
 				while (!isGameOver(state)) {
-					if (!state->turn && aiMove(state)) {
-						sleep(0.5);
+					if (!state->turn && aiMove(state,"Parent")&&!isGameOver(state)) {
 						state->turn = !state->turn;
 					}
 					// Increment turn count and check if we should save
@@ -436,10 +441,12 @@ int main() {
 		refresh();
 		menu();
 		choice = getch();
+		clear();
 		printw("\n");
 		switch (choice) {
 		case '1':
 			createGrids(state);
+			state->gameOver=0;
 			createdGrids = 1;
 			printw("Grids created.\n\n");
 			break;
@@ -455,8 +462,7 @@ int main() {
 				}
 				if (pid == 0) {
 					while (!isGameOver(state)) {
-						if (state->turn && aiMove(state)) {
-							sleep(0.5);
+						if (state->turn && aiMove(state,"Child")&&!isGameOver(state)) {
 							state->turn = !state->turn;
 						}
 					}
@@ -464,8 +470,7 @@ int main() {
 					exit(0); // exit child process
 				} else {
 					while (!isGameOver(state)) {
-						if (!state->turn && aiMove(state)) {
-							sleep(0.5);
+						if (!state->turn && aiMove(state,"Parent")&&!isGameOver(state)) {
 							state->turn = !state->turn;
 						}
 						// Increment turn count and check if we should save
