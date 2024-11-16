@@ -326,7 +326,6 @@ void initializeMap(char grid[ROW_SIZE][ROW_SIZE])
 
 int isGameOver(BattleFieldInfo *state)
 {
-	if(state->gameOver) return 1;
 	int parentShipsAlive = 0;
 	int childShipsAlive = 0;
 
@@ -347,15 +346,16 @@ int isGameOver(BattleFieldInfo *state)
 			break;
 		}
 	}
-	if(state->turn&&!parentShipsAlive){
-		state->gameOver=1;
-		printw("Parent won the game!\n");
-	}
-	else if(!state->turn&&!childShipsAlive){
-		state->gameOver=1;
-		printw("Child won the game!\n");
-	}
 	return !(parentShipsAlive && childShipsAlive);
+}
+
+void whoWon(BattleFieldInfo *state){
+	if(state->turn){
+		printw("Child won the game!");
+	}
+	else{
+		printw("Parent won the game!");
+	}
 }
 
 void createGrids(BattleFieldInfo *state) { //This method creates the grids.
@@ -402,6 +402,7 @@ int main() {
 		clear();
 		if (choice == 'y' || choice == 'Y') {
 			load_game(state);
+			state->gameOver=0;
 			pid_t pid = fork(); // creates child process
 			if (pid == -1) { // failed to fork
 				exit(1);
@@ -412,7 +413,6 @@ int main() {
 						state->turn = !state->turn;
 					}
 				}
-				remove(SAVE_FILE);
 				exit(0); // exit child process
 			} else {
 				while (!isGameOver(state)) {
@@ -425,6 +425,7 @@ int main() {
 						save_game(state);
 					}
 				}
+				whoWon(state);
 				remove(SAVE_FILE);
 				printw("\nGame completed.\n");
 			}
@@ -466,7 +467,6 @@ int main() {
 							state->turn = !state->turn;
 						}
 					}
-					remove(SAVE_FILE);
 					exit(0); // exit child process
 				} else {
 					while (!isGameOver(state)) {
@@ -479,6 +479,7 @@ int main() {
 							save_game(state);
 						}
 					}
+					whoWon(state);
 					remove(SAVE_FILE);
 					printw("\nGame completed.\n");
 				}
